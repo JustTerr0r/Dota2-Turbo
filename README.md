@@ -1,3 +1,9 @@
+Как обновлять
+
+cd app
+npm run push:app -- -m "Что изменилось"     # только код app/
+npm run release -- --notes "Что нового"     # сборка и релиз
+
 # D2Turbo app (macOS + Windows beta)
 
 > This repository is published from `app/` of a larger checkout (`npm run push:app`). The engine (`Minify/`, the bundled mods) and the build scripts (`scripts/`) are not included, so it does not build on its own. Paths such as `../scripts/…` refer to that checkout.
