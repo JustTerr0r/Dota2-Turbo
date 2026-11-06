@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "D2Turbo",
+  "version": "0.1.0-beta.1",
+  "identifier": "com.d2turbo.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "D2Turbo",
+        "width": 540,
+        "height": 760,
+        "minWidth": 460,
+        "minHeight": 560
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app",
+      "dmg"
+    ],
+    "category": "public.app-category.games",
+    "publisher": "D2Turbo",
+    "copyright": "© 2026 D2Turbo. GPL-3.0-or-later",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "icons/icon.png"
+    ],
+    "externalBin": [
+      "binaries/d2turbo-engine"
+    ],
+    "resources": {
+      "../../Minify/mods/#base/": "mods/#base/",
+      "../../Minify/mods/#English Fix/": "mods/#English Fix/",
+      "../../Minify/mods/D2Turbo/": "mods/D2Turbo/",
+      "../../Minify/mods/OpenDotaGuides Guides/": "mods/OpenDotaGuides Guides/"
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "signingIdentity": "-",
+      "entitlements": "Entitlements.plist"
+    }
+  }
+}

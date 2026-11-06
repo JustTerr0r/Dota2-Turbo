@@ -1,0 +1,35 @@
+[package]
+name = "d2turbo"
+version = "0.1.0-beta.1"
+description = "D2Turbo mod patcher"
+edition = "2021"
+publish = false
+
+[lib]
+name = "d2turbo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-log = "2"
+log = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "multipart"] }
+zip = { version = "9.3.0", default-features = false, features = ["deflate-flate2"] }
+# zip only selects flate2; its pure-Rust backend must be enabled explicitly for the Windows cross-build
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true
