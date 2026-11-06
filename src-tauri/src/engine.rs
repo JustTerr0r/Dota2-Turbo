@@ -18,6 +18,12 @@ pub struct EngineState {
     busy: AtomicBool,
 }
 
+impl EngineState {
+    pub fn is_busy(&self) -> bool {
+        self.busy.load(Ordering::SeqCst)
+    }
+}
+
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct EngineStatus {
     pub version: String,
@@ -85,6 +91,7 @@ fn engine_env(home: &Path) -> Vec<(&'static str, String)> {
         ("MINIFY_HOME", home.display().to_string()),
         ("MINIFY_EVENTS", "json".into()),
         ("MINIFY_NONINTERACTIVE", "1".into()),
+        ("MINIFY_FULL_UNINSTALL", "1".into()),
         ("PYTHONUNBUFFERED", "1".into()),
         // Output is read as UTF-8; on Windows a piped stdout would use the ANSI code page
         ("PYTHONIOENCODING", "utf-8".into()),

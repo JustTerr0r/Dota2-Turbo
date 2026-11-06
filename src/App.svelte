@@ -12,8 +12,10 @@
     revealReport,
     runTask,
     sendReport,
+    setFeatures,
     type AppStatus,
     type EngineEvent,
+    type Features,
     type ReportResult,
     type Task,
   } from "./lib/api";
@@ -41,6 +43,8 @@
   let log = $state<LogLine[]>([]);
   let expanded = $state<string | null>(null);
   let importing = $state(false);
+  let launchOption = $state("");
+  let launchOptionCopied = $state(false);
   let logEl: HTMLElement | undefined = $state();
 
   const CONTACT_KEY = "d2turbo.report.contact";
@@ -103,7 +107,9 @@
 
   async function start(task: Task) {
     if (task === "uninstall") {
-      const yes = await ask("Удалить установленные моды D2Turbo из Dota 2?", {
+      const text =
+        "Будут удалены моды из Dota 2 и кэш D2Turbo, вернутся стандартные гайды, а из параметров запуска исчезнет -language. Если Steam открыт, он перезапустится. Продолжить?";
+      const yes = await ask(text, {
         title: "Uninstall",
         kind: "warning",
         okLabel: "Удалить",
@@ -113,6 +119,8 @@
     }
     log = [];
     seenKeys = [];
+    launchOption = "";
+    launchOptionCopied = false;
     current = "";
     result = null;
     running = task;
@@ -129,6 +137,8 @@
   function onEvent(ev: EngineEvent) {
     if (ev.type === "log") {
       if (ev.key) seenKeys.push(ev.key);
+      // The engine reports the locale it patched for only inside this message's text
+      if (ev.key === "launch_option") launchOption = ev.text.match(/-language \S+?(?=['\s]|$)/)?.[0] ?? "";
       if (ev.text) {
         log.push({ level: ev.level, text: ev.text });
         if (ev.level === "info") current = ev.text.replace(/^->\s*/, "");
@@ -137,6 +147,26 @@
       current = `${ev.name}: ${Math.round((ev.downloaded_bytes / ev.total_bytes) * 100)}%`;
     }
     tick().then(() => logEl?.scrollTo({ top: logEl.scrollHeight }));
+  }
+
+  async function copyLaunchOption() {
+    await copy(launchOption);
+    launchOptionCopied = true;
+  }
+
+  async function toggleFeature(key: keyof Features, event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const previous = status!.features;
+    const features = { ...previous, [key]: input.checked };
+    status!.features = features;
+    try {
+      await setFeatures(features);
+    } catch (e) {
+      status!.features = previous;
+      input.checked = previous[key];
+      logUi("error", `set_features: ${String(e)}`);
+      await message(String(e), { title: "Настройка не сохранилась", kind: "error" });
+    }
   }
 
   async function pickWorkshop() {
@@ -261,13 +291,26 @@
   </section>
 
   <section class="primary">
+    {#if status}
+      <div class="features">
+        <label>
+          <input type="checkbox" checked={status.features.turbo_builds} onchange={(e) => toggleFeature("turbo_builds", e)} disabled={loading || !!running} />
+          Турбо-билды
+        </label>
+        <label>
+          <input type="checkbox" checked={status.features.turbo_picks} onchange={(e) => toggleFeature("turbo_picks", e)} disabled={loading || !!running} />
+          Турбо-пики героев
+        </label>
+      </div>
+      <p class="hint">Рейтинг лиги ставится всегда. Изменения применятся после следующего Patch.</p>
+    {/if}
     <button class="patch" onclick={() => start("patch")} disabled={loading || blocked || !!running}>
       {running === "patch" ? "Патчим…" : "Patch"}
     </button>
-    <button class="secondary" onclick={() => start("uninstall")} disabled={loading || !status?.engine.dota_found || !!running}>
+    <button class="secondary" onclick={() => start("uninstall")} disabled={loading || !status?.engine.dota_found || status.engine.dota_running || !!running}>
       {running === "uninstall" ? "Удаляем…" : "Uninstall"}
     </button>
-    <p class="hint">При необходимости D2Turbo поправит параметры запуска Dota 2 (-language) и перезапустит Steam.</p>
+    <p class="hint">Если параметры запуска Dota 2 уже заданы, D2Turbo сам допишет в них -language и перезапустит Steam.</p>
   </section>
 
   {#if running || result || log.length}
@@ -289,6 +332,21 @@
             {result.success ? "Моды удалены." : "Uninstall не удался."}
           {/if}
         </p>
+        {#if result.task === "patch" && result.success && launchOption}
+          <div class="launch-option">
+            <p class="launch-title">Проверьте параметры запуска Dota 2</p>
+            <p class="launch-why">Без этого параметра мод не загрузится.</p>
+            <div class="launch-copy">
+              <pre>{launchOption}</pre>
+              <button class="small" onclick={copyLaunchOption}>{launchOptionCopied ? "Скопировано" : "Скопировать"}</button>
+            </div>
+            <ol>
+              <li>В Steam откройте библиотеку и нажмите правой кнопкой на Dota 2.</li>
+              <li>Выберите «Свойства», вкладка «Общие», поле «Параметры запуска».</li>
+              <li>Вставьте скопированное. Если в поле уже что-то есть, добавьте через пробел.</li>
+            </ol>
+          </div>
+        {/if}
       {/if}
       <details>
         <summary>Лог</summary>

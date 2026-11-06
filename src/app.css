@@ -60,6 +60,8 @@ pre { background: #0a0b0f; border: 1px solid var(--line); border-radius: 8px; pa
 .hint { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
 
 .primary { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+.features { display: flex; justify-content: center; gap: 20px; }
+.features label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .patch {
   font-size: 22px; font-weight: 800; letter-spacing: 1px; padding: 16px; border-radius: 12px; color: #fff;
   background: linear-gradient(180deg, #f0533f, var(--accent));
@@ -69,6 +71,13 @@ pre { background: #0a0b0f; border: 1px solid var(--line); border-radius: 8px; pa
 .secondary { background: transparent; border: 1px solid var(--line); padding: 9px; color: var(--muted); }
 .secondary:hover:not(:disabled) { color: var(--text); border-color: #3a3f50; }
 
+.launch-option { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--accent-2); border-radius: 8px; }
+.launch-option p { margin: 0; }
+.launch-title { font-weight: 700; }
+.launch-why { margin-top: 2px !important; font-size: 12px; color: var(--muted); }
+.launch-copy { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.launch-copy pre { flex: 1; margin: 0; font-size: 13px; }
+.launch-option ol { margin: 0; padding-left: 18px; font-size: 12px; color: var(--muted); }
 .steps { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .steps li { padding-left: 22px; position: relative; color: var(--muted); }
 .steps li::before { content: ""; position: absolute; left: 4px; top: 5px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--line); }

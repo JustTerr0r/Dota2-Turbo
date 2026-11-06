@@ -24,6 +24,7 @@ struct AppStatus {
     engine: EngineStatus,
     deps: Vec<deps::DepCheck>,
     engine_home: String,
+    features: preset::Features,
 }
 
 /// Last `get_status` result (or its error), attached to bug reports.
@@ -34,7 +35,7 @@ struct LastStatus(Mutex<Option<Value>>);
 fn prepare(app: &AppHandle) -> Result<PathBuf, String> {
     let home = workspace::engine_home(app)?;
     workspace::sync_mods(app, &home)?;
-    preset::write_mods_config(&home)?;
+    preset::write_mods_config(&home, preset::read_features(&home))?;
     Ok(home)
 }
 
@@ -69,6 +70,7 @@ async fn collect_status(app: &AppHandle) -> Result<AppStatus, String> {
         engine,
         deps,
         engine_home: home.display().to_string(),
+        features: preset::read_features(&home),
     })
 }
 
@@ -78,6 +80,27 @@ fn run_task(app: AppHandle, state: State<'_, EngineState>, task: Task) -> Result
     let result = prepare(&app).and_then(|home| engine::start(app.clone(), &state, &home, task));
     if let Err(e) = &result {
         log::error!("run_task {task:?} failed to start: {e}");
+    }
+    result
+}
+
+#[tauri::command]
+fn set_features(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+    features: preset::Features,
+) -> Result<(), String> {
+    // The engine owns this config file while it runs
+    if state.is_busy() {
+        return Err("Another task is already running".into());
+    }
+    log::info!("set_features {features:?}");
+    let result = workspace::engine_home(&app).and_then(|home| {
+        preset::write_features(&home, features)?;
+        preset::write_mods_config(&home, features)
+    });
+    if let Err(e) = &result {
+        log::error!("set_features failed: {e}");
     }
     result
 }
@@ -273,6 +296,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_status,
             run_task,
+            set_features,
             import_workshop_tools,
             open_logs,
             send_report,

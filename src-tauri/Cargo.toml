@@ -1,6 +1,6 @@
 [package]
 name = "d2turbo"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 description = "D2Turbo mod patcher"
 edition = "2021"
 publish = false
