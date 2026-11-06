@@ -33,6 +33,8 @@ pub struct EngineStatus {
     pub dota_running: bool,
     pub workshop_installed: bool,
     pub output_path: String,
+    #[serde(default)]
+    pub steam_language: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]

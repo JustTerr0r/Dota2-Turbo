@@ -25,6 +25,8 @@ struct AppStatus {
     deps: Vec<deps::DepCheck>,
     engine_home: String,
     features: preset::Features,
+    language: String,
+    languages: &'static [&'static str],
 }
 
 /// Last `get_status` result (or its error), attached to bug reports.
@@ -60,6 +62,15 @@ async fn get_status(app: AppHandle, last: State<'_, LastStatus>) -> Result<AppSt
 async fn collect_status(app: &AppHandle) -> Result<AppStatus, String> {
     let home = prepare(app)?;
     let engine = engine::status(app, &home).await?;
+    let language = match preset::read_language(&home) {
+        Some(language) => language,
+        None => {
+            let detected = preset::detect_language(&engine.steam_language);
+            log::info!("game language detected: {detected}");
+            preset::write_language(&home, detected)?;
+            detected.to_string()
+        }
+    };
     let deps = tauri::async_runtime::spawn_blocking(deps::check)
         .await
         .map_err(|e| e.to_string())?;
@@ -71,6 +82,8 @@ async fn collect_status(app: &AppHandle) -> Result<AppStatus, String> {
         deps,
         engine_home: home.display().to_string(),
         features: preset::read_features(&home),
+        language,
+        languages: preset::LANGUAGES,
     })
 }
 
@@ -105,13 +118,36 @@ fn set_features(
     result
 }
 
+#[tauri::command]
+fn set_language(
+    app: AppHandle,
+    state: State<'_, EngineState>,
+    language: String,
+) -> Result<(), String> {
+    if state.is_busy() {
+        return Err("Another task is already running".into());
+    }
+    log::info!("set_language {language}");
+    let result =
+        workspace::engine_home(&app).and_then(|home| preset::write_language(&home, &language));
+    if let Err(e) = &result {
+        log::error!("set_language failed: {e}");
+    }
+    result
+}
+
 const RESCOMP_EXE: &str = "game/bin/win64/resourcecompiler.exe";
 
-/// Accepts either a `rescomproot` folder or a folder that contains one.
+/// Accepts a tools folder (`rescomproot`, or `resourcecompiler` from the downloaded archive)
+/// or a folder that contains one.
 fn find_rescomp_root(picked: &Path) -> Option<PathBuf> {
-    [picked.to_path_buf(), picked.join("rescomproot")]
-        .into_iter()
-        .find(|p| p.join(RESCOMP_EXE).is_file())
+    [
+        picked.to_path_buf(),
+        picked.join("rescomproot"),
+        picked.join("resourcecompiler"),
+    ]
+    .into_iter()
+    .find(|p| p.join(RESCOMP_EXE).is_file())
 }
 
 #[tauri::command]
@@ -297,6 +333,7 @@ pub fn run() {
             get_status,
             run_task,
             set_features,
+            set_language,
             import_workshop_tools,
             open_logs,
             send_report,
@@ -305,4 +342,31 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running D2Turbo");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tools_at(root: &Path) -> PathBuf {
+        let exe = root.join(RESCOMP_EXE);
+        std::fs::create_dir_all(exe.parent().unwrap()).unwrap();
+        std::fs::write(exe, "").unwrap();
+        root.to_path_buf()
+    }
+
+    #[test]
+    fn finds_tools_in_the_picked_folder_or_one_level_down() {
+        let tmp = tempfile::tempdir().unwrap();
+        let archive = tools_at(&tmp.path().join("resourcecompiler"));
+        let extracted = tools_at(&tmp.path().join("other/rescomproot"));
+
+        assert_eq!(find_rescomp_root(&archive), Some(archive.clone()));
+        assert_eq!(find_rescomp_root(tmp.path()), Some(archive));
+        assert_eq!(
+            find_rescomp_root(&tmp.path().join("other")),
+            Some(extracted)
+        );
+        assert_eq!(find_rescomp_root(&tmp.path().join("missing")), None);
+    }
 }

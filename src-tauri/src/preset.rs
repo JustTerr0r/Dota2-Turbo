@@ -14,6 +14,39 @@ const GUIDES_MOD: &str = "OpenDotaGuides Guides";
 
 const MOD_NAME: &str = "D2Turbo";
 
+/// Game languages the engine can patch for (`constants.minify_output_list`).
+pub const LANGUAGES: &[&str] = &[
+    "english",
+    "brazilian",
+    "bulgarian",
+    "czech",
+    "danish",
+    "dutch",
+    "finnish",
+    "french",
+    "german",
+    "greek",
+    "hungarian",
+    "italian",
+    "japanese",
+    "koreana",
+    "latam",
+    "norwegian",
+    "polish",
+    "portuguese",
+    "romanian",
+    "russian",
+    "schinese",
+    "spanish",
+    "swedish",
+    "tchinese",
+    "thai",
+    "turkish",
+    "ukrainian",
+    "vietnamese",
+];
+const DEFAULT_LANGUAGE: &str = "english";
+
 /// Optional parts of D2Turbo, the league rating is always on.
 /// Stored as settings of the mod (see its `manifest.json`), which reads them while patching.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
@@ -54,8 +87,8 @@ pub fn read_features(home: &Path) -> Features {
     }
 }
 
-/// Merges the switches into the engine config, keeping everything else in the file.
-pub fn write_features(home: &Path, features: Features) -> Result<(), String> {
+/// Edits the engine config, keeping everything else in the file.
+fn update_config(home: &Path, edit: impl FnOnce(&mut Map<String, Value>)) -> Result<(), String> {
     let path = config_path(home);
     let mut config = match fs::read_to_string(&path) {
         Ok(raw) => serde_json::from_str::<Value>(&raw)
@@ -66,24 +99,65 @@ pub fn write_features(home: &Path, features: Features) -> Result<(), String> {
     let root = config
         .as_object_mut()
         .ok_or_else(|| format!("{} is not an object", path.display()))?;
-    let modconf = root.entry("modconf").or_insert_with(|| json!({}));
-    if !modconf.is_object() {
-        *modconf = json!({});
-    }
-    let mod_conf = modconf
-        .as_object_mut()
-        .expect("modconf is an object")
-        .entry(MOD_NAME)
-        .or_insert_with(|| json!({}));
-    if !mod_conf.is_object() {
-        *mod_conf = json!({});
-    }
-    mod_conf["turbo_builds"] = json!(features.turbo_builds);
-    mod_conf["turbo_picks"] = json!(features.turbo_picks);
+    edit(root);
 
     fs::create_dir_all(home.join("config")).map_err(|e| e.to_string())?;
     let out = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
     fs::write(&path, out).map_err(|e| format!("write {}: {e}", path.display()))
+}
+
+fn mod_conf(root: &mut Map<String, Value>) -> &mut Value {
+    let modconf = root.entry("modconf").or_insert_with(|| json!({}));
+    if !modconf.is_object() {
+        *modconf = json!({});
+    }
+    let conf = modconf
+        .as_object_mut()
+        .expect("modconf is an object")
+        .entry(MOD_NAME)
+        .or_insert_with(|| json!({}));
+    if !conf.is_object() {
+        *conf = json!({});
+    }
+    conf
+}
+
+pub fn write_features(home: &Path, features: Features) -> Result<(), String> {
+    update_config(home, |root| {
+        let conf = mod_conf(root);
+        conf["turbo_builds"] = json!(features.turbo_builds);
+        conf["turbo_picks"] = json!(features.turbo_picks);
+    })
+}
+
+/// The launcher's language, `None` until it was detected or picked.
+/// `output_locale` can't tell that: the engine fills it with `english` the first time it runs.
+pub fn read_language(home: &Path) -> Option<String> {
+    let raw = fs::read_to_string(config_path(home)).ok()?;
+    let config = serde_json::from_str::<Value>(&raw).ok()?;
+    config["modconf"][MOD_NAME]["game_language"]
+        .as_str()
+        .filter(|l| LANGUAGES.contains(l))
+        .map(String::from)
+}
+
+pub fn write_language(home: &Path, language: &str) -> Result<(), String> {
+    if !LANGUAGES.contains(&language) {
+        return Err(format!("unknown language: {language}"));
+    }
+    update_config(home, |root| {
+        mod_conf(root)["game_language"] = json!(language);
+        root.insert("output_locale".into(), json!(language));
+    })
+}
+
+/// First run: keep the language the game already has in Steam instead of switching it to English.
+pub fn detect_language(steam_language: &str) -> &str {
+    if LANGUAGES.contains(&steam_language) {
+        steam_language
+    } else {
+        DEFAULT_LANGUAGE
+    }
 }
 
 pub fn write_mods_config(home: &Path, features: Features) -> Result<(), String> {
@@ -189,6 +263,38 @@ mod tests {
         assert_eq!(v["steam_id"], "1");
         assert_eq!(v["modconf"]["D2Turbo"]["guide_title"], "X");
         assert_eq!(v["modconf"]["Other"]["a"], 1);
+    }
+
+    #[test]
+    fn language_is_stored_for_the_launcher_and_the_engine() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(read_language(tmp.path()), None);
+
+        write_language(tmp.path(), "russian").unwrap();
+
+        assert_eq!(read_language(tmp.path()).as_deref(), Some("russian"));
+        let raw = fs::read_to_string(config_path(tmp.path())).unwrap();
+        let v: Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(v["output_locale"], "russian");
+    }
+
+    #[test]
+    fn engine_default_locale_does_not_count_as_a_choice() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::create_dir_all(tmp.path().join("config")).unwrap();
+        fs::write(config_path(tmp.path()), r#"{"output_locale": "english"}"#).unwrap();
+
+        assert_eq!(read_language(tmp.path()), None);
+    }
+
+    #[test]
+    fn rejects_unknown_languages() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(write_language(tmp.path(), "klingon").is_err());
+        assert!(!config_path(tmp.path()).exists());
+        assert_eq!(detect_language("klingon"), "english");
+        assert_eq!(detect_language(""), "english");
+        assert_eq!(detect_language("russian"), "russian");
     }
 
     #[test]

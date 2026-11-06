@@ -11,6 +11,7 @@ export interface EngineStatus {
   dota_running: boolean;
   workshop_installed: boolean;
   output_path: string;
+  steam_language: string;
 }
 
 export interface DepCheck {
@@ -32,6 +33,8 @@ export interface AppStatus {
   deps: DepCheck[];
   engine_home: string;
   features: Features;
+  language: string;
+  languages: string[];
 }
 
 export type EngineEvent =
@@ -63,6 +66,7 @@ export interface ReportRequest {
 export const getStatus = () => invoke<AppStatus>("get_status");
 export const runTask = (task: Task) => invoke<void>("run_task", { task });
 export const setFeatures = (features: Features) => invoke<void>("set_features", { features });
+export const setLanguage = (language: string) => invoke<void>("set_language", { language });
 export const importWorkshopTools = (path: string) => invoke<void>("import_workshop_tools", { path });
 export const openLogs = () => invoke<void>("open_logs");
 export const sendReport = (request: ReportRequest) => invoke<ReportResult>("send_report", { request });

@@ -58,18 +58,22 @@ const macGuides: Record<string, Guide> = {
   },
 };
 
-const workshopWhy = "resourcecompiler.exe компилирует CSS/XML-часть D2Turbo (тиры героев, рейтинг лиги).";
-const workshopImport = "Если у вас уже есть такая папка (например, Minify/config/rescomproot), нажмите «Импортировать папку» и выберите её.";
-const workshopOptional = "Без Workshop Tools Patch всё равно работает: ставятся гайды и название сборки, но без тиров и рейтинга.";
+const workshopWhy = "resourcecompiler.exe собирает интерфейсную часть D2Turbo: рейтинг лиги и тиры героев. Без него Patch недоступен.";
+const WORKSHOP_DOWNLOAD = {
+  label: "Скачать resourcecompiler.zip",
+  url: "https://github.com/Dota-Modding-Community/workshoptools/releases/latest/download/resourcecompiler.zip",
+};
+const workshopImport = "Распакуйте архив, нажмите «Импортировать папку» и выберите распакованную папку resourcecompiler.";
 
 const workshopMac: Guide = {
   title: "Dota 2 Workshop Tools",
   why: workshopWhy,
   steps: [
-    "Нужна папка rescomproot с Windows-файлами Dota 2 (game/bin/win64/resourcecompiler.exe и окружение) — извлекается Minify на Windows-установке Dota с Workshop Tools.",
+    "В Steam на Mac такого DLC нет: Valve выпускает Workshop Tools только для Windows. Нужны Windows-файлы компилятора, они запускаются через Wine.",
+    "Скачайте архив кнопкой ниже (около 70 МБ).",
     workshopImport,
-    workshopOptional,
   ],
+  link: WORKSHOP_DOWNLOAD,
 };
 
 const workshopWindows: Guide = {
@@ -79,9 +83,9 @@ const workshopWindows: Guide = {
     "В Steam откройте Библиотеку, нажмите правой кнопкой на Dota 2 → Свойства → DLC.",
     "Отметьте «Dota 2 Workshop Tools DLC» и дождитесь окончания загрузки.",
     "Нажмите «Проверить снова».",
-    workshopImport,
-    workshopOptional,
+    `Если DLC нет в списке или он не скачивается, возьмите архив кнопкой ниже. ${workshopImport}`,
   ],
+  link: WORKSHOP_DOWNLOAD,
 };
 
 /** Install help for the platform reported by the app (`macos`, `windows`). */

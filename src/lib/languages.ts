@@ -1,0 +1,33 @@
+/** Names for the engine's game language ids, in the language itself. */
+const NAMES: Record<string, string> = {
+  english: "English",
+  brazilian: "Português (Brasil)",
+  bulgarian: "Български",
+  czech: "Čeština",
+  danish: "Dansk",
+  dutch: "Nederlands",
+  finnish: "Suomi",
+  french: "Français",
+  german: "Deutsch",
+  greek: "Ελληνικά",
+  hungarian: "Magyar",
+  italian: "Italiano",
+  japanese: "日本語",
+  koreana: "한국어",
+  latam: "Español (Latinoamérica)",
+  norwegian: "Norsk",
+  polish: "Polski",
+  portuguese: "Português",
+  romanian: "Română",
+  russian: "Русский",
+  schinese: "简体中文",
+  spanish: "Español",
+  swedish: "Svenska",
+  tchinese: "繁體中文",
+  thai: "ไทย",
+  turkish: "Türkçe",
+  ukrainian: "Українська",
+  vietnamese: "Tiếng Việt",
+};
+
+export const languageName = (id: string) => NAMES[id] ?? id;

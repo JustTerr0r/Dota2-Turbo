@@ -77,10 +77,10 @@ Releases are not marked as prerelease, because `/releases/latest` skips prerelea
 
 The script requires Wine (`~/.local/bin/wine`), uv, Node, rustup and Homebrew LLVM. It installs the Rust Windows target and `cargo-xwin` itself.
 
-On Windows the app has no dependency checks. `resourcecompiler.exe` runs natively once the *Dota 2 Workshop Tools DLC* is installed in Steam.
+On Windows the app has no dependency checks. `resourcecompiler.exe` runs natively once the *Dota 2 Workshop Tools DLC* is installed in Steam, and Patch stays disabled until then.
 
 ## Installing the beta
 
 The build is ad-hoc signed and not notarized. The first time you open it, right-click the app and choose **Open**. If macOS still blocks it, run `xattr -cr /Applications/D2Turbo.app`.
 
-The CSS/XML part of D2Turbo (hero tiers, league rating) needs Rosetta 2, Wine, DXVK-macOS and the Dota 2 Workshop Tools (`rescomproot`). The checklist in the app explains how to install each one. Without them, Patch still installs the guides and the custom guide name.
+The CSS/XML part of D2Turbo (hero tiers, league rating) needs Rosetta 2, Wine, DXVK-macOS and the Dota 2 Workshop Tools (`rescomproot`). The checklist in the app explains how to install each one, and Patch stays disabled until all of them are in place. Steam has no Workshop Tools DLC on macOS, so the tools come from the `resourcecompiler.zip` release of Dota-Modding-Community/workshoptools (the same source as upstream Minify's download) and are added with **Import folder**.

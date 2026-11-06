@@ -13,6 +13,7 @@
     runTask,
     sendReport,
     setFeatures,
+    setLanguage,
     type AppStatus,
     type EngineEvent,
     type Features,
@@ -20,6 +21,7 @@
     type Task,
   } from "./lib/api";
   import { guidesFor } from "./lib/guides";
+  import { languageName } from "./lib/languages";
 
   type LogLine = { level: string; text: string };
   type Item = { id: string; label: string; ok: boolean; detail: string; blocking: boolean };
@@ -27,8 +29,8 @@
   // Engine localization keys that mark the patch phases
   const STEPS = [
     { id: "install", label: "Подготовка модов", keys: ["installing_terminal"] },
-    { id: "decompile", label: "Распаковка файлов игры", keys: ["decompiling_terminal"], workshop: true },
-    { id: "rescomp", label: "Компиляция интерфейса", keys: ["compiling_resource_terminal"], workshop: true },
+    { id: "decompile", label: "Распаковка файлов игры", keys: ["decompiling_terminal"] },
+    { id: "rescomp", label: "Компиляция интерфейса", keys: ["compiling_resource_terminal"] },
     { id: "pack", label: "Сборка VPK", keys: ["compiling_terminal"] },
     { id: "done", label: "Готово", keys: ["success_terminal"] },
   ];
@@ -73,21 +75,18 @@
     ];
     for (const id of ["rosetta", "wine", "dxvk"]) {
       const d = dep(id);
-      if (d && guides[id]) list.push({ id, label: guides[id].title, ok: d.ok, detail: d.ok ? d.detail : "", blocking: false });
+      if (d && guides[id]) list.push({ id, label: guides[id].title, ok: d.ok, detail: d.ok ? d.detail : "", blocking: true });
     }
-    list.push({ id: "workshop", label: guides.workshop.title, ok: e.workshop_installed, detail: "", blocking: false });
+    list.push({ id: "workshop", label: guides.workshop.title, ok: e.workshop_installed, detail: "", blocking: true });
     return list;
   });
 
   const blocked = $derived(items.some((i) => i.blocking && !i.ok));
-  const degraded = $derived(items.some((i) => !i.blocking && !i.ok));
-  const workshopOn = $derived(!!status?.engine.workshop_installed);
-  const steps = $derived(STEPS.filter((s) => !s.workshop || workshopOn));
 
   function stepState(i: number): "done" | "active" | "todo" {
     const reached = (s: (typeof STEPS)[number]) => s.keys.some((k) => seenKeys.includes(k));
-    const last = steps.findLastIndex(reached);
-    if (i < last || (i === last && steps[i].id === "done")) return "done";
+    const last = STEPS.findLastIndex(reached);
+    if (i < last || (i === last && STEPS[i].id === "done")) return "done";
     if (i === last) return running ? "active" : "done";
     return "todo";
   }
@@ -165,6 +164,20 @@
       status!.features = previous;
       input.checked = previous[key];
       logUi("error", `set_features: ${String(e)}`);
+      await message(String(e), { title: "Настройка не сохранилась", kind: "error" });
+    }
+  }
+
+  async function changeLanguage(event: Event) {
+    const select = event.currentTarget as HTMLSelectElement;
+    const previous = status!.language;
+    status!.language = select.value;
+    try {
+      await setLanguage(select.value);
+    } catch (e) {
+      status!.language = previous;
+      select.value = previous;
+      logUi("error", `set_language: ${String(e)}`);
       await message(String(e), { title: "Настройка не сохранилась", kind: "error" });
     }
   }
@@ -285,8 +298,8 @@
       {/each}
     </ul>
 
-    {#if degraded && !blocked}
-      <p class="note">Без отмеченных компонентов установятся гайды и название сборки, но тиры героев и рейтинг лиги — нет.</p>
+    {#if blocked && status}
+      <p class="note">Patch станет доступен, когда будут выполнены все пункты: без них рейтинг лиги и тиры героев не установятся.</p>
     {/if}
   </section>
 
@@ -302,6 +315,14 @@
           Турбо-пики героев
         </label>
       </div>
+      <label class="language">
+        Язык Dota 2
+        <select value={status.language} onchange={changeLanguage} disabled={loading || !!running}>
+          {#each status.languages as id (id)}
+            <option value={id}>{languageName(id)}</option>
+          {/each}
+        </select>
+      </label>
       <p class="hint">Рейтинг лиги ставится всегда. Изменения применятся после следующего Patch.</p>
     {/if}
     <button class="patch" onclick={() => start("patch")} disabled={loading || blocked || !!running}>
@@ -317,7 +338,7 @@
     <section class="card">
       {#if running === "patch" || result?.task === "patch"}
         <ol class="steps">
-          {#each steps as step, i (step.id)}
+          {#each STEPS as step, i (step.id)}
             <li class={stepState(i)}>{step.label}</li>
           {/each}
         </ol>
